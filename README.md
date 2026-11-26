@@ -2,6 +2,8 @@
 
 一个独立的事件驱动 DSH 彩带特效插件，内置零依赖的 `canvas-confetti` v1.9.3，不绑定特定业务事件，监听 `dsh:confetti` 自定义事件即可触发，在系统开启「减少动态效果」时自动跳过。
 
+此包是 [`dsh-pirate-mode`](https://github.com/butterfly301/dsh-pirate-mode) 的组件，也可以单独安装使用。
+
 ## 独立安装与配置
 
 ```bash
