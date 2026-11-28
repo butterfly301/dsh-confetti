@@ -28,6 +28,10 @@ window.__ModuleLoader__.load({
             resolve(window.confetti);
             return;
           }
+          if (existing.dataset.dshConfettiState !== undefined) {
+            resolve(null);
+            return;
+          }
           existing.addEventListener('load', () => resolve(window.confetti ?? null), { once: true });
           existing.addEventListener('error', () => resolve(null), { once: true });
         });
@@ -37,8 +41,14 @@ window.__ModuleLoader__.load({
         script.src = VENDOR_URL;
         script.async = true;
         script.setAttribute('data-dsh-confetti', '1');
-        script.onload = () => resolve(window.confetti ?? null);
-        script.onerror = () => resolve(null);
+        script.onload = () => {
+          script.dataset.dshConfettiState = 'done';
+          resolve(window.confetti ?? null);
+        };
+        script.onerror = () => {
+          script.dataset.dshConfettiState = 'error';
+          resolve(null);
+        };
         (document.head || document.documentElement).appendChild(script);
       });
     }
@@ -89,14 +99,25 @@ window.__ModuleLoader__.load({
             currentPack = status === 'ready' ? normalizePack(value?.pack) : null;
           };
 
-          const getFire = async () => {
-            if (fireInstance) return fireInstance;
-            const confettiFn = await loadVendorScript();
-            if (disposed || typeof confettiFn !== 'function') return null;
-            canvas = ensureCanvas();
-            if (!canvas || typeof confettiFn.create !== 'function') return confettiFn;
-            fireInstance = confettiFn.create(canvas, { resize: true, useWorker: false });
-            return fireInstance;
+          let pendingFire = null;
+          const getFire = () => {
+            if (fireInstance) return Promise.resolve(fireInstance);
+            if (pendingFire) return pendingFire;
+            pendingFire = (async () => {
+              const confettiFn = await loadVendorScript();
+              if (disposed || typeof confettiFn !== 'function') return null;
+              canvas = ensureCanvas();
+              if (!canvas || typeof confettiFn.create !== 'function') return confettiFn;
+              fireInstance = confettiFn.create(canvas, { resize: true, useWorker: false });
+              return fireInstance;
+            })().then((value) => {
+              pendingFire = null;
+              return value;
+            }, (error) => {
+              pendingFire = null;
+              throw error;
+            });
+            return pendingFire;
           };
 
           const onConfetti = (event) => {
@@ -124,7 +145,7 @@ window.__ModuleLoader__.load({
                 ...(colors.length ? { colors } : {}),
                 disableForReducedMotion: true,
               });
-            });
+            }).catch(() => {});
           };
 
           if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
@@ -143,6 +164,7 @@ window.__ModuleLoader__.load({
             fireInstance = null;
             try { canvas?.remove(); } catch {}
             canvas = null;
+            try { document.querySelector('script[data-dsh-confetti]')?.remove(); } catch {}
           };
         }, 'dsh-confetti: overlay');
       },

@@ -6,9 +6,20 @@ import { fileURLToPath } from 'node:url';
 const localRequire = createRequire(import.meta.url);
 const hostRoot = process.env.DSH_INSTALL_DIR
   ?? (process.resourcesPath && join(process.resourcesPath, 'app.asar', 'dsh', 'node_modules', '@deepseek-ai', 'dsh'));
-const schemastery = hostRoot
-  ? createRequire(join(hostRoot, 'package.json'))('@deepseek-ai/schemastery')
-  : localRequire('@deepseek-ai/schemastery');
+function loadSchemastery() {
+  try {
+    return hostRoot
+      ? createRequire(join(hostRoot, 'package.json'))('@deepseek-ai/schemastery')
+      : localRequire('@deepseek-ai/schemastery');
+  } catch (err) {
+    if (err?.code !== 'MODULE_NOT_FOUND' || !String(err.message).includes('@deepseek-ai/schemastery')) {
+      throw err;
+    }
+    const chain = () => ({ default: chain, min: chain, max: chain, pattern: chain, volatile: chain });
+    return { object: chain, string: chain, number: chain, boolean: chain, array: chain, dict: chain, union: chain, const: chain };
+  }
+}
+const schemastery = loadSchemastery();
 const z = schemastery.default ?? schemastery;
 
 const ROUTE = '/confetti/vendor/confetti.browser.js';
@@ -54,7 +65,15 @@ export function apply(ctx) {
           res.end();
           return;
         }
-        if (!cached) cached = await readFile(VENDOR_PATH);
+        if (!cached) {
+          try {
+            cached = await readFile(VENDOR_PATH);
+          } catch {
+            res.writeHead(500, { 'x-content-type-options': 'nosniff' });
+            res.end();
+            return;
+          }
+        }
         res.writeHead(200, {
           'x-content-type-options': 'nosniff',
           'cache-control': 'public, max-age=3600',

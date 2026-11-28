@@ -1,6 +1,6 @@
 {
   "name": "dsh-confetti",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Event-driven confetti overlay plugin for DeepSeek Harness powered by canvas-confetti, respecting reduced motion.",
   "license": "MIT",
@@ -36,6 +36,7 @@
     "test": "node --test \"test/*.test.js\""
   },
   "files": [
+    "cordis.patch.yml",
     "index.js",
     "client.js",
     "vendor",
@@ -51,6 +52,9 @@
       "inject": [
         "@deepseek-ai/dsh-client-ui-settings"
       ]
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
     }
   }
 }
